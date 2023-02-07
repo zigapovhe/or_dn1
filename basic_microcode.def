@@ -1,0 +1,68 @@
+# A small set of microinstructions for the CPU
+# (c) GPL3 Warren Toomey, 2012
+#
+
+fetch:	addrsel=pc irload=1 			# Address=PC, Load IR register
+	pcload=1  pcsel=pc, opcode_jump		# PC=PC+1, jump to 2+OPC
+#
+# ALU operations on Rd,Rs,Rt
+# add Rd,Rs,Rt
+0:	aluop=add  op2sel=treg  dwrite=1  regsrc=aluout, goto fetch			# ALU=+, ALU 2nd op = treg, write from aluout to reg
+
+#addi
+16: addrsel=pc imload=1
+	aluop=add op2sel=immed dwrite=1 regsrc=aluout, goto pcincr
+
+#subi
+17: addrsel=pc imload=1
+	aluop=sub op2sel=immed dwrite=1 regsrc=aluout, goto pcincr
+
+#muli
+18: addrsel=pc imload=1
+	aluop=mul op2sel=immed dwrite=1 regsrc=aluout, goto pcincr
+
+#divi
+19: addrsel=pc imload=1
+	aluop=div op2sel=immed dwrite=1 regsrc=aluout, goto pcincr
+
+#remi
+20: addrsel=pc imload=1
+	aluop=rem op2sel=immed dwrite=1 regsrc=aluout, goto pcincr
+
+#andi
+21: addrsel=pc imload=1
+	aluop=and op2sel=immed dwrite=1 regsrc=aluout, goto pcincr
+
+#ori
+22: addrsel=pc imload=1
+	aluop=or op2sel=immed dwrite=1 regsrc=aluout, goto pcincr
+
+
+
+
+#
+# Jump compared to zero operations
+#
+# JNEZ Rs,immed  ; If Rs != 0, PC <- immed else  PC <- PC + 2
+40:	addrsel=pc  imload=1								            # Read Immediate operand -> IMRegister
+	aluop=sub  op2sel=const0, if z then pcincr else jump		    # If z then pcincr else jump to immed; opsel=0 means value of 2 (constant 0 is selected!!!)
+
+#
+# li Rd,Immed    ; Load immediate Rd, immed   
+63:	addrsel=pc  dwrite=1  regsrc=databus, goto pcincr				# additional increment (cause immed was read) and then new command
+#	pcload=1  pcsel=pc, goto fetch                                  # not optimal way to do this, better goto to pcincr: instead (line above)
+
+#
+# sw Rd,immed    ; Store Rd into M[immed] Rd->M[immed]; 
+65:	addrsel=pc  imload=1
+	addrsel=immed  datawrite=1  datasel=dreg, goto pcincr			# additional increment (cause immed was read) and then new command
+#	pcload=1  pcsel=pc, goto fetch                                  # not optimal way to do this, better goto to pcincr: instead (line above)
+
+#
+# Other code which we call
+#
+# Increment PC and goto new command; for all commands that use immediate operand - they need additional PC increment !
+pcincr:	pcload=1  pcsel=pc, goto fetch
+
+# Set address to immed and goto new command; for jumps to absolute immed address
+jump:	pcload=1  pcsel=immed, goto fetch
